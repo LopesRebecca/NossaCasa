@@ -18,7 +18,8 @@ import { supabase } from "../supabase";
 import { useStore } from "../store";
 import type { HouseDocument } from "../types";
 
-const bucket = "house-documents";
+const bucket =
+  import.meta.env.VITE_SUPABASE_DOCUMENTS_BUCKET || "house-documents";
 
 const blank = (): HouseDocument => ({
   id: uid(),
@@ -56,7 +57,14 @@ async function uploadDocumentFile(file: File, houseName: string, documentId: str
     cacheControl: "3600",
     contentType: file.type || "application/octet-stream",
   });
-  if (error) throw error;
+  if (error) {
+    if (error.message.toLowerCase().includes("bucket not found")) {
+      throw new Error(
+        `Bucket "${bucket}" não encontrado no Supabase. Crie esse bucket ou ajuste VITE_SUPABASE_DOCUMENTS_BUCKET.`,
+      );
+    }
+    throw error;
+  }
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 }

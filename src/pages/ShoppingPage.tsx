@@ -44,6 +44,12 @@ const blank = (): ShoppingItem => ({
   notes: "",
 });
 
+const priorityRank: Record<ShoppingItem["priority"], number> = {
+  Alta: 0,
+  "Média": 1,
+  Baixa: 2,
+};
+
 export function ShoppingPage() {
   const { data, setData } = useStore();
   const [room, setRoom] = useState("Todos");
@@ -56,13 +62,21 @@ export function ShoppingPage() {
   const [pendingDelete, setPendingDelete] = useState<string[]>([]);
   const items = useMemo(
     () =>
-      data.shopping.filter(
-        (i) =>
-          (room === "Todos" || i.room === room) &&
-          (priority === "Todas" || i.priority === priority) &&
-          (status === "Todos" || i.status === status) &&
-          i.name.toLowerCase().includes(search.toLowerCase()),
-      ),
+      data.shopping
+        .filter(
+          (i) =>
+            (room === "Todos" || i.room === room) &&
+            (priority === "Todas" || i.priority === priority) &&
+            (status === "Todos" || i.status === status) &&
+            i.name.toLowerCase().includes(search.toLowerCase()),
+        )
+        .sort((a, b) => {
+          const byPriority = priorityRank[a.priority] - priorityRank[b.priority];
+          if (byPriority !== 0) return byPriority;
+          const byRoom = a.room.localeCompare(b.room, "pt-BR");
+          if (byRoom !== 0) return byRoom;
+          return a.name.localeCompare(b.name, "pt-BR");
+        }),
     [data.shopping, room, priority, status, search],
   );
   const bought = data.shopping.filter((i) => i.purchased);
@@ -123,7 +137,7 @@ export function ShoppingPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Lista por cômodo"
+        eyebrow="Lista por cômodo e prioridade"
         title="Enxoval"
         description="Planejem, pesquisem e marquem cada conquista — do primeiro copo ao sofá."
         action={
