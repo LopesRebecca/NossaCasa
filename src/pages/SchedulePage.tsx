@@ -1,10 +1,298 @@
-import { useState } from 'react'
-import { CalendarDays } from 'lucide-react'
-import { toast } from 'sonner'
-import { AddButton, Badge, Empty, Field, FormGrid, Modal, PageHeader, RowActions, SearchBox, priorityTone, statusTone, Tabs } from '../components'
-import { shortDate, uid } from '../lib'
-import { useStore } from '../store'
-import type { ScheduleEvent } from '../types'
-const blank=():ScheduleEvent=>({id:uid(),title:'',category:'Caixa',date:'',time:'',owner:'As duas',status:'Pendente',priority:'Média',notes:''})
-export function SchedulePage(){const {data,setData}=useStore();const [view,setView]=useState('Lista geral');const [search,setSearch]=useState('');const [open,setOpen]=useState(false);const [item,setItem]=useState(blank());const now=Date.now();let items=data.events.filter(e=>e.title.toLowerCase().includes(search.toLowerCase()));if(view==='Próximos 7 dias')items=items.filter(e=>{const d=new Date(e.date).getTime()-now;return d>=-86400000&&d<=7*86400000});if(view==='Pendências importantes')items=items.filter(e=>e.priority==='Alta'&&e.status!=='Concluído');const save=()=>{setData(d=>({...d,events:d.events.some(x=>x.id===item.id)?d.events.map(x=>x.id===item.id?item:x):[...d.events,item]}));setOpen(false);toast.success('Compromisso salvo')};return <><PageHeader eyebrow="Prazos e compromissos" title="Cronograma" description="Caixa, cartório, obra e mudança em uma agenda compartilhada." action={<AddButton onClick={()=>{setItem(blank());setOpen(true)}}>Novo compromisso</AddButton>}/><div className="mb-4 flex flex-col gap-3 lg:flex-row"><SearchBox value={search} onChange={setSearch} placeholder="Buscar compromisso..."/><Tabs items={['Lista geral','Calendário mensal','Próximos 7 dias','Pendências importantes']} value={view} onChange={setView}/></div>{view==='Calendário mensal'?<CalendarView items={items}/>:<div className="table-wrap">{items.length?<table className="data-table"><thead><tr><th>Compromisso</th><th>Categoria</th><th>Data</th><th>Responsável</th><th>Prioridade</th><th>Status</th><th></th></tr></thead><tbody>{items.sort((a,b)=>a.date.localeCompare(b.date)).map(e=><tr key={e.id}><td><p className="font-semibold">{e.title}</p><p className="text-xs text-slate-400">{e.time||'Sem horário'}</p></td><td>{e.category}</td><td>{shortDate(e.date)}</td><td>{e.owner}</td><td><Badge tone={priorityTone(e.priority)}>{e.priority}</Badge></td><td><Badge tone={statusTone(e.status)}>{e.status}</Badge></td><td><RowActions onEdit={()=>{setItem(e);setOpen(true)}} onDelete={()=>setData(d=>({...d,events:d.events.filter(x=>x.id!==e.id)}))}/></td></tr>)}</tbody></table>:<Empty/>}</div>}<Modal open={open} onClose={()=>setOpen(false)} title="Compromisso"><FormGrid><Field label="Título"><input className="field" value={item.title} onChange={e=>setItem(x=>({...x,title:e.target.value}))}/></Field><Field label="Categoria"><select className="field" value={item.category} onChange={e=>setItem(x=>({...x,category:e.target.value}))}>{['Caixa','Cartório','Construtora','Obra','Mudança','Documentação','Compra'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Data"><input className="field" type="date" value={item.date} onChange={e=>setItem(x=>({...x,date:e.target.value}))}/></Field><Field label="Horário"><input className="field" type="time" value={item.time} onChange={e=>setItem(x=>({...x,time:e.target.value}))}/></Field><Field label="Responsável"><select className="field" value={item.owner} onChange={e=>setItem(x=>({...x,owner:e.target.value as ScheduleEvent['owner']}))}>{['Rebecca','Namorada','As duas'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Prioridade"><select className="field" value={item.priority} onChange={e=>setItem(x=>({...x,priority:e.target.value as ScheduleEvent['priority']}))}>{['Alta','Média','Baixa'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Status"><select className="field" value={item.status} onChange={e=>setItem(x=>({...x,status:e.target.value}))}>{['Pendente','Em andamento','Concluído','Cancelado'].map(x=><option key={x}>{x}</option>)}</select></Field></FormGrid><div className="mt-5 flex justify-end"><button className="btn-primary" onClick={save}>Salvar</button></div></Modal></>}
-function CalendarView({items}:{items:ScheduleEvent[]}){const days=Array.from({length:35},(_,i)=>i+1);return <div className="card"><div className="mb-5 flex items-center gap-2"><CalendarDays className="text-sage-500"/><p className="font-display text-xl font-bold">Este mês</p></div><div className="grid grid-cols-7 gap-1">{['D','S','T','Q','Q','S','S'].map((d,i)=><div key={i} className="p-2 text-center text-xs font-semibold text-slate-400">{d}</div>)}{days.map(day=><div key={day} className="min-h-20 rounded-xl border p-2 text-xs"><span className="font-semibold">{day<=31?day:''}</span>{items.filter(e=>new Date(e.date+'T12:00').getDate()===day).slice(0,2).map(e=><div key={e.id} className="mt-1 truncate rounded bg-sage-100 px-1.5 py-1 text-[10px] text-sage-700">{e.title}</div>)}</div>)}</div></div>}
+import { useState } from "react";
+import { CalendarDays } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AddButton,
+  Badge,
+  Empty,
+  Field,
+  FormGrid,
+  Modal,
+  PageHeader,
+  RowActions,
+  SearchBox,
+  priorityTone,
+  statusTone,
+  Tabs,
+} from "../components";
+import { shortDate, uid } from "../lib";
+import { useStore } from "../store";
+import type { ScheduleEvent } from "../types";
+const blank = (): ScheduleEvent => ({
+  id: uid(),
+  title: "",
+  category: "Caixa",
+  date: "",
+  time: "",
+  owner: "As duas",
+  status: "Pendente",
+  priority: "Média",
+  notes: "",
+});
+export function SchedulePage() {
+  const { data, setData } = useStore();
+  const [view, setView] = useState("Lista geral");
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const [item, setItem] = useState(blank());
+  const now = Date.now();
+  let items = data.events.filter((e) =>
+    e.title.toLowerCase().includes(search.toLowerCase()),
+  );
+  if (view === "Próximos 7 dias")
+    items = items.filter((e) => {
+      const d = new Date(e.date).getTime() - now;
+      return d >= -86400000 && d <= 7 * 86400000;
+    });
+  if (view === "Pendências importantes")
+    items = items.filter(
+      (e) => e.priority === "Alta" && e.status !== "Concluído",
+    );
+  const save = () => {
+    setData((d) => ({
+      ...d,
+      events: d.events.some((x) => x.id === item.id)
+        ? d.events.map((x) => (x.id === item.id ? item : x))
+        : [...d.events, item],
+    }));
+    setOpen(false);
+    toast.success("Compromisso salvo");
+  };
+  return (
+    <>
+      <PageHeader
+        eyebrow="Prazos e compromissos"
+        title="Cronograma"
+        description="Caixa, cartório, obra e mudança em uma agenda compartilhada."
+        action={
+          <AddButton
+            onClick={() => {
+              setItem(blank());
+              setOpen(true);
+            }}
+          >
+            Novo compromisso
+          </AddButton>
+        }
+      />
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row">
+        <SearchBox
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar compromisso..."
+        />
+        <Tabs
+          items={[
+            "Lista geral",
+            "Calendário mensal",
+            "Próximos 7 dias",
+            "Pendências importantes",
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </div>
+      {view === "Calendário mensal" ? (
+        <CalendarView items={items} />
+      ) : (
+        <div className="table-wrap">
+          {items.length ? (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Compromisso</th>
+                  <th>Categoria</th>
+                  <th>Data</th>
+                  <th>Responsável</th>
+                  <th>Prioridade</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {items
+                  .sort((a, b) => a.date.localeCompare(b.date))
+                  .map((e) => (
+                    <tr key={e.id}>
+                      <td>
+                        <p className="font-semibold">{e.title}</p>
+                        <p className="text-xs text-slate-400">
+                          {e.time || "Sem horário"}
+                        </p>
+                      </td>
+                      <td>{e.category}</td>
+                      <td>{shortDate(e.date)}</td>
+                      <td>{e.owner}</td>
+                      <td>
+                        <Badge tone={priorityTone(e.priority)}>
+                          {e.priority}
+                        </Badge>
+                      </td>
+                      <td>
+                        <Badge tone={statusTone(e.status)}>{e.status}</Badge>
+                      </td>
+                      <td>
+                        <RowActions
+                          onEdit={() => {
+                            setItem(e);
+                            setOpen(true);
+                          }}
+                          onDelete={() =>
+                            setData((d) => ({
+                              ...d,
+                              events: d.events.filter((x) => x.id !== e.id),
+                            }))
+                          }
+                        />
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          ) : (
+            <Empty />
+          )}
+        </div>
+      )}
+      <Modal open={open} onClose={() => setOpen(false)} title="Compromisso">
+        <FormGrid>
+          <Field label="Título">
+            <input
+              className="field"
+              value={item.title}
+              onChange={(e) =>
+                setItem((x) => ({ ...x, title: e.target.value }))
+              }
+            />
+          </Field>
+          <Field label="Categoria">
+            <select
+              className="field"
+              value={item.category}
+              onChange={(e) =>
+                setItem((x) => ({ ...x, category: e.target.value }))
+              }
+            >
+              {[
+                "Caixa",
+                "Cartório",
+                "Construtora",
+                "Obra",
+                "Mudança",
+                "Documentação",
+                "Compra",
+              ].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Data">
+            <input
+              className="field"
+              type="date"
+              value={item.date}
+              onChange={(e) => setItem((x) => ({ ...x, date: e.target.value }))}
+            />
+          </Field>
+          <Field label="Horário">
+            <input
+              className="field"
+              type="time"
+              value={item.time}
+              onChange={(e) => setItem((x) => ({ ...x, time: e.target.value }))}
+            />
+          </Field>
+          <Field label="Responsável">
+            <select
+              className="field"
+              value={item.owner}
+              onChange={(e) =>
+                setItem((x) => ({
+                  ...x,
+                  owner: e.target.value as ScheduleEvent["owner"],
+                }))
+              }
+            >
+              {["Rebecca", "Naelly", "As duas"].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Prioridade">
+            <select
+              className="field"
+              value={item.priority}
+              onChange={(e) =>
+                setItem((x) => ({
+                  ...x,
+                  priority: e.target.value as ScheduleEvent["priority"],
+                }))
+              }
+            >
+              {["Alta", "Média", "Baixa"].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Status">
+            <select
+              className="field"
+              value={item.status}
+              onChange={(e) =>
+                setItem((x) => ({ ...x, status: e.target.value }))
+              }
+            >
+              {["Pendente", "Em andamento", "Concluído", "Cancelado"].map(
+                (x) => (
+                  <option key={x}>{x}</option>
+                ),
+              )}
+            </select>
+          </Field>
+        </FormGrid>
+        <div className="mt-5 flex justify-end">
+          <button className="btn-primary" onClick={save}>
+            Salvar
+          </button>
+        </div>
+      </Modal>
+    </>
+  );
+}
+function CalendarView({ items }: { items: ScheduleEvent[] }) {
+  const days = Array.from({ length: 35 }, (_, i) => i + 1);
+  return (
+    <div className="card">
+      <div className="mb-5 flex items-center gap-2">
+        <CalendarDays className="text-sage-500" />
+        <p className="font-display text-xl font-bold">Este mês</p>
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => (
+          <div
+            key={i}
+            className="p-2 text-center text-xs font-semibold text-slate-400"
+          >
+            {d}
+          </div>
+        ))}
+        {days.map((day) => (
+          <div key={day} className="min-h-20 rounded-xl border p-2 text-xs">
+            <span className="font-semibold">{day <= 31 ? day : ""}</span>
+            {items
+              .filter((e) => new Date(e.date + "T12:00").getDate() === day)
+              .slice(0, 2)
+              .map((e) => (
+                <div
+                  key={e.id}
+                  className="mt-1 truncate rounded bg-sage-100 px-1.5 py-1 text-[10px] text-sage-700"
+                >
+                  {e.title}
+                </div>
+              ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

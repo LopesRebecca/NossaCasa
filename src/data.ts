@@ -16,7 +16,7 @@ const shopping:ShoppingItem[]=Object.entries(roomItems).flatMap(([room,names])=>
 const reserveGoalId=id(); const movingGoalId=id()
 const today=new Date(); const date=(days:number)=>{const d=new Date(today);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
 export const initialData:AppData={
-  house:{name:'Casa RN',address:'Pintombeira',city:'Limoeiro do Norte',neighborhood:'Pintombeira',lotSize:'10 x 25 m',builtSize:'—',type:'Casa',seller:'',sellerContact:'',value:280000,downPayment:56000,deliveryDate:date(120),status:'Em análise',notes:'Nosso novo começo. 🏡'},
+  house:{name:'Casa RN',address:'Pintombeira',city:'Limoeiro do Norte',neighborhood:'Pintombeira',lotSize:'10 x 25 m',builtSize:'—',type:'Casa',seller:'',sellerContact:'',value:280000,downPayment:56000,deliveryDate:date(120),status:'Em análise',notes:'Nosso novo começo. 🏡',joinCode:''},
   shopping,
   financing:{bank:'Caixa Econômica Federal',type:'SAC',propertyValue:280000,financedValue:224000,downPayment:56000,installmentsCount:360,annualRate:9.8,monthlyRate:0.78,amortizationSystem:'SAC',contractDate:'',firstDueDate:date(12),dueDay:10,firstValue:2410,currentValue:2385,currentBalance:221440,currentNumber:3,status:'Em pagamento',contractUrl:'',notes:'Valores demonstrativos e totalmente editáveis.'},
   installments:[
@@ -29,7 +29,7 @@ export const initialData:AppData={
     {id:id(),title:'Entregar documentos para Caixa',category:'Caixa',date:date(3),time:'09:00',owner:'Rebecca',status:'Pendente',priority:'Alta',notes:'Levar originais e cópias.'},
     {id:id(),title:'Assinar contrato',category:'Caixa',date:date(12),time:'14:00',owner:'As duas',status:'Pendente',priority:'Alta',notes:''},
     {id:id(),title:'Ir ao cartório',category:'Cartório',date:date(20),time:'10:30',owner:'As duas',status:'Pendente',priority:'Média',notes:'Registro do imóvel.'},
-    {id:id(),title:'Agendar mudança',category:'Mudança',date:date(90),time:'08:00',owner:'Namorada',status:'Pendente',priority:'Baixa',notes:''}
+    {id:id(),title:'Agendar mudança',category:'Mudança',date:date(90),time:'08:00',owner:'Naelly',status:'Pendente',priority:'Baixa',notes:''}
   ],
   savingsGoals:[
     {id:reserveGoalId,name:'Reserva da casa',target:30000,deadline:date(180),category:'Reserva de emergência',priority:'Alta',notes:'Segurança para os primeiros meses na casa.'},
@@ -38,17 +38,26 @@ export const initialData:AppData={
   savingsTransactions:[
     {id:id(),description:'Depósito inicial',type:'Depósito',amount:5000,date:date(-45),goalId:reserveGoalId,responsible:'As duas',notes:''},
     {id:id(),description:'Economia do mês',type:'Depósito',amount:1800,date:date(-15),goalId:reserveGoalId,responsible:'Rebecca',notes:''},
-    {id:id(),description:'Fundo para mudança',type:'Depósito',amount:1200,date:date(-7),goalId:movingGoalId,responsible:'Namorada',notes:''}
+    {id:id(),description:'Fundo para mudança',type:'Depósito',amount:1200,date:date(-7),goalId:movingGoalId,responsible:'Naelly',notes:''}
   ],
   documents:[
     {id:id(),name:'RG e CPF',category:'Pessoal',status:'Aprovado',sentDate:date(-5),expiryDate:'',owner:'As duas',file:'',notes:''},
     {id:id(),name:'Comprovante de renda',category:'Caixa',status:'Enviado',sentDate:date(-2),expiryDate:'',owner:'Rebecca',file:'',notes:''},
     {id:id(),name:'Contrato Caixa',category:'Caixa',status:'Pendente',sentDate:'',expiryDate:'',owner:'As duas',file:'',notes:''},
-    {id:id(),name:'Matrícula do imóvel',category:'Imóvel',status:'Pendente',sentDate:'',expiryDate:'',owner:'Namorada',file:'',notes:''}
+    {id:id(),name:'Matrícula do imóvel',category:'Imóvel',status:'Pendente',sentDate:'',expiryDate:'',owner:'Naelly',file:'',notes:''}
   ],
   inspirations:[
     {id:id(),title:'Sala natural e aconchegante',room:'Sala',category:'Decoração',image:'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=900&q=80',priority:'Alta',status:'Gostamos',notes:'Madeira clara, linho e plantas.'},
     {id:id(),title:'Cozinha funcional em tons claros',room:'Cozinha',category:'Móveis planejados',image:'https://images.unsplash.com/photo-1556912167-f556f1f39fdf?auto=format&fit=crop&w=900&q=80',priority:'Média',status:'Talvez',notes:'Bancada livre e boa iluminação.'},
     {id:id(),title:'Quarto calmo e minimalista',room:'Quarto do casal',category:'Decoração',image:'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=80',priority:'Alta',status:'Gostamos',notes:'Paleta bege com verde suave.'}
+  ],
+  checklist:[
+    {id:id(),title:'Solicitar ligação de energia',category:'Serviços',completed:false,owner:'Rebecca',dueDate:date(70),priority:'Alta',notes:'Verificar documentos exigidos.',position:1},
+    {id:id(),title:'Solicitar ligação de água',category:'Serviços',completed:false,owner:'Naelly',dueDate:date(70),priority:'Alta',notes:'',position:2},
+    {id:id(),title:'Contratar internet',category:'Serviços',completed:false,owner:'As duas',dueDate:date(80),priority:'Média',notes:'Comparar planos disponíveis.',position:3},
+    {id:id(),title:'Separar caixas e etiquetas',category:'Organização',completed:false,owner:'As duas',dueDate:date(60),priority:'Média',notes:'',position:4},
+    {id:id(),title:'Agendar transporte da mudança',category:'Mudança',completed:false,owner:'Rebecca',dueDate:date(85),priority:'Alta',notes:'Pedir três orçamentos.',position:5},
+    {id:id(),title:'Atualizar endereço em cadastros',category:'Documentação',completed:false,owner:'Naelly',dueDate:date(100),priority:'Baixa',notes:'Banco, trabalho e correspondências.',position:6},
+    {id:id(),title:'Limpeza antes da mudança',category:'Limpeza',completed:false,owner:'As duas',dueDate:date(88),priority:'Alta',notes:'',position:7}
   ]
 }

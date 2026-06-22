@@ -20,3 +20,10 @@
   .data-table th { @apply border-b bg-slate-50/70 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500; }
   .data-table td { @apply border-b px-4 py-3 align-middle last:border-b-0; }
 }
+@media print {
+  aside, header, nav, .no-print { display: none !important; }
+  body, main { background: white !important; }
+  main { display: block !important; }
+  .report-page { padding: 0 !important; }
+  .card { box-shadow: none !important; break-inside: avoid; }
+}

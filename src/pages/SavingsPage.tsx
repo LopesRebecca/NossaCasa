@@ -1,28 +1,570 @@
-import { useMemo, useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, CalendarClock, PiggyBank, Target, Wallet } from 'lucide-react'
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { toast } from 'sonner'
-import { AddButton, Badge, Empty, Field, FormGrid, Metric, Modal, PageHeader, RowActions, Tabs, priorityTone } from '../components'
-import { money, shortDate, uid } from '../lib'
-import { useStore } from '../store'
-import type { SavingsGoal, SavingsTransaction } from '../types'
+import { useMemo, useState } from "react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  CalendarClock,
+  PiggyBank,
+  Target,
+  Wallet,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { toast } from "sonner";
+import {
+  AddButton,
+  Badge,
+  Empty,
+  Field,
+  FormGrid,
+  Metric,
+  Modal,
+  PageHeader,
+  RowActions,
+  Tabs,
+  priorityTone,
+} from "../components";
+import { money, shortDate, uid } from "../lib";
+import { useStore } from "../store";
+import type { SavingsGoal, SavingsTransaction } from "../types";
 
-const blankGoal=():SavingsGoal=>({id:uid(),name:'',target:0,deadline:'',category:'Reserva da casa',priority:'Média',notes:''})
-const blankTransaction=():SavingsTransaction=>({id:uid(),description:'',type:'Depósito',amount:0,date:new Date().toISOString().slice(0,10),goalId:'',responsible:'As duas',notes:''})
-export function SavingsPage(){
- const {data,setData}=useStore(); const [tab,setTab]=useState('Visão geral'); const [goalOpen,setGoalOpen]=useState(false); const [transactionOpen,setTransactionOpen]=useState(false); const [goal,setGoal]=useState(blankGoal()); const [transaction,setTransaction]=useState(blankTransaction())
- const deposits=data.savingsTransactions.filter(t=>t.type==='Depósito').reduce((s,t)=>s+t.amount,0); const withdrawals=data.savingsTransactions.filter(t=>t.type==='Retirada').reduce((s,t)=>s+t.amount,0); const balance=deposits-withdrawals; const target=data.savingsGoals.reduce((s,g)=>s+g.target,0); const progress=Math.min(100,Math.round(balance/target*100)||0)
- const goalBalances=useMemo(()=>Object.fromEntries(data.savingsGoals.map(g=>[g.id,data.savingsTransactions.filter(t=>t.goalId===g.id).reduce((s,t)=>s+(t.type==='Depósito'?t.amount:-t.amount),0)])),[data])
- const evolution=useMemo(()=>{let sum=0;return [...data.savingsTransactions].sort((a,b)=>a.date.localeCompare(b.date)).map(t=>{sum+=t.type==='Depósito'?t.amount:-t.amount;return {date:shortDate(t.date),saldo:sum}})},[data.savingsTransactions])
- const saveGoal=()=>{setData(d=>({...d,savingsGoals:d.savingsGoals.some(x=>x.id===goal.id)?d.savingsGoals.map(x=>x.id===goal.id?goal:x):[...d.savingsGoals,goal]}));setGoalOpen(false);toast.success('Meta salva')}
- const saveTransaction=()=>{if(!transaction.description||transaction.amount<=0){toast.error('Informe a descrição e um valor válido');return}setData(d=>({...d,savingsTransactions:d.savingsTransactions.some(x=>x.id===transaction.id)?d.savingsTransactions.map(x=>x.id===transaction.id?transaction:x):[...d.savingsTransactions,transaction]}));setTransactionOpen(false);toast.success('Movimentação registrada')}
- return <><PageHeader eyebrow="Reserva para os planos" title="Poupança" description="Acompanhem quanto já guardaram, organizem metas e registrem depósitos ou retiradas." action={<div className="flex gap-2"><button className="btn-secondary" onClick={()=>{setGoal(blankGoal());setGoalOpen(true)}}><Target size={17}/>Nova meta</button><AddButton onClick={()=>{setTransaction({...blankTransaction(),goalId:data.savingsGoals[0]?.id||''});setTransactionOpen(true)}}>Movimentação</AddButton></div>}/>
- <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Saldo guardado" value={money(balance)} icon={<PiggyBank size={19}/>} detail={`${progress}% da meta total`}/><Metric label="Total depositado" value={money(deposits)} icon={<ArrowDownLeft size={19}/>} tone="blue"/><Metric label="Total retirado" value={money(withdrawals)} icon={<ArrowUpRight size={19}/>} tone="rose"/><Metric label="Meta total" value={money(target)} icon={<Target size={19}/>} detail={`${money(Math.max(0,target-balance))} para chegar lá`} tone="sand"/></div>
- <div className="my-5"><Tabs items={['Visão geral','Metas','Movimentações']} value={tab} onChange={setTab}/></div>
- {tab==='Visão geral'&&<div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]"><div className="card"><div className="flex items-center justify-between"><div><p className="font-semibold">Evolução da reserva</p><p className="text-xs text-slate-500">Saldo acumulado ao longo do tempo</p></div><Wallet className="text-sage-500" size={20}/></div><div className="mt-4 h-72"><ResponsiveContainer width="100%" height="100%"><AreaChart data={evolution}><defs><linearGradient id="save" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#678b72" stopOpacity={.35}/><stop offset="95%" stopColor="#678b72" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="date" axisLine={false} tickLine={false}/><YAxis hide/><Tooltip formatter={(v:number)=>money(v)}/><Area type="monotone" dataKey="saldo" stroke="#678b72" strokeWidth={3} fill="url(#save)"/></AreaChart></ResponsiveContainer></div></div><div className="card"><p className="font-semibold">Progresso das metas</p><div className="mt-5 space-y-5">{data.savingsGoals.map(g=>{const value=goalBalances[g.id]||0;const pct=Math.min(100,Math.round(value/g.target*100)||0);return <div key={g.id}><div className="mb-2 flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">{g.name}</p><p className="text-xs text-slate-500">{money(value)} de {money(g.target)}</p></div><Badge tone={pct>=100?'green':'yellow'}>{pct}%</Badge></div><div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-sage-500" style={{width:`${pct}%`}}/></div></div>})}</div></div></div>}
- {tab==='Metas'&&<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.savingsGoals.length?data.savingsGoals.map(g=>{const value=goalBalances[g.id]||0;const pct=Math.min(100,Math.round(value/g.target*100)||0);return <div key={g.id} className="card"><div className="flex items-start justify-between"><div className="rounded-xl bg-amber-50 p-2.5 text-amber-700"><Target size={20}/></div><RowActions onEdit={()=>{setGoal(g);setGoalOpen(true)}} onDelete={()=>setData(d=>({...d,savingsGoals:d.savingsGoals.filter(x=>x.id!==g.id)}))}/></div><h3 className="mt-5 font-display text-xl font-bold">{g.name}</h3><p className="mt-1 text-xs text-slate-500">{g.category}</p><p className="mt-5 text-2xl font-bold">{money(value)}</p><p className="text-xs text-slate-500">Meta de {money(g.target)}</p><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-amber-500" style={{width:`${pct}%`}}/></div><div className="mt-4 flex items-center justify-between"><span className="flex items-center gap-1 text-xs text-slate-500"><CalendarClock size={14}/>{shortDate(g.deadline)}</span><Badge tone={priorityTone(g.priority)}>{g.priority}</Badge></div></div>}):<div className="card md:col-span-2"><Empty/></div>}</div>}
- {tab==='Movimentações'&&<div className="table-wrap">{data.savingsTransactions.length?<table className="data-table"><thead><tr><th>Movimentação</th><th>Data</th><th>Meta</th><th>Responsável</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>{[...data.savingsTransactions].sort((a,b)=>b.date.localeCompare(a.date)).map(t=><tr key={t.id}><td><p className="font-semibold">{t.description}</p><p className="text-xs text-slate-400">{t.notes}</p></td><td>{shortDate(t.date)}</td><td>{data.savingsGoals.find(g=>g.id===t.goalId)?.name||'Geral'}</td><td>{t.responsible}</td><td><Badge tone={t.type==='Depósito'?'green':'red'}>{t.type}</Badge></td><td className={`font-semibold ${t.type==='Depósito'?'text-emerald-700':'text-red-600'}`}>{t.type==='Depósito'?'+':'−'} {money(t.amount)}</td><td><RowActions onEdit={()=>{setTransaction(t);setTransactionOpen(true)}} onDelete={()=>setData(d=>({...d,savingsTransactions:d.savingsTransactions.filter(x=>x.id!==t.id)}))}/></td></tr>)}</tbody></table>:<Empty/>}</div>}
- <Modal open={goalOpen} onClose={()=>setGoalOpen(false)} title="Meta de poupança"><FormGrid><Field label="Nome da meta"><input className="field" value={goal.name} onChange={e=>setGoal(x=>({...x,name:e.target.value}))}/></Field><Field label="Categoria"><input className="field" value={goal.category} onChange={e=>setGoal(x=>({...x,category:e.target.value}))}/></Field><Field label="Valor da meta"><input className="field" type="number" value={goal.target} onChange={e=>setGoal(x=>({...x,target:+e.target.value}))}/></Field><Field label="Prazo"><input className="field" type="date" value={goal.deadline} onChange={e=>setGoal(x=>({...x,deadline:e.target.value}))}/></Field><Field label="Prioridade"><select className="field" value={goal.priority} onChange={e=>setGoal(x=>({...x,priority:e.target.value as SavingsGoal['priority']}))}>{['Alta','Média','Baixa'].map(x=><option key={x}>{x}</option>)}</select></Field><div className="sm:col-span-2"><Field label="Observações"><textarea className="field" value={goal.notes} onChange={e=>setGoal(x=>({...x,notes:e.target.value}))}/></Field></div></FormGrid><div className="mt-5 flex justify-end"><button className="btn-primary" onClick={saveGoal}>Salvar meta</button></div></Modal>
- <Modal open={transactionOpen} onClose={()=>setTransactionOpen(false)} title="Movimentação da poupança"><FormGrid><Field label="Descrição"><input className="field" value={transaction.description} onChange={e=>setTransaction(x=>({...x,description:e.target.value}))}/></Field><Field label="Tipo"><select className="field" value={transaction.type} onChange={e=>setTransaction(x=>({...x,type:e.target.value as SavingsTransaction['type']}))}><option>Depósito</option><option>Retirada</option></select></Field><Field label="Valor"><input className="field" type="number" value={transaction.amount} onChange={e=>setTransaction(x=>({...x,amount:+e.target.value}))}/></Field><Field label="Data"><input className="field" type="date" value={transaction.date} onChange={e=>setTransaction(x=>({...x,date:e.target.value}))}/></Field><Field label="Meta"><select className="field" value={transaction.goalId} onChange={e=>setTransaction(x=>({...x,goalId:e.target.value}))}><option value="">Geral</option>{data.savingsGoals.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></Field><Field label="Responsável"><select className="field" value={transaction.responsible} onChange={e=>setTransaction(x=>({...x,responsible:e.target.value as SavingsTransaction['responsible']}))}>{['Rebecca','Namorada','As duas'].map(x=><option key={x}>{x}</option>)}</select></Field><div className="sm:col-span-2"><Field label="Observações"><textarea className="field" value={transaction.notes} onChange={e=>setTransaction(x=>({...x,notes:e.target.value}))}/></Field></div></FormGrid><div className="mt-5 flex justify-end"><button className="btn-primary" onClick={saveTransaction}>Salvar movimentação</button></div></Modal>
- </>
+const blankGoal = (): SavingsGoal => ({
+  id: uid(),
+  name: "",
+  target: 0,
+  deadline: "",
+  category: "Reserva da casa",
+  priority: "Média",
+  notes: "",
+});
+const blankTransaction = (): SavingsTransaction => ({
+  id: uid(),
+  description: "",
+  type: "Depósito",
+  amount: 0,
+  date: new Date().toISOString().slice(0, 10),
+  goalId: "",
+  responsible: "As duas",
+  notes: "",
+});
+export function SavingsPage() {
+  const { data, setData } = useStore();
+  const [tab, setTab] = useState("Visão geral");
+  const [goalOpen, setGoalOpen] = useState(false);
+  const [transactionOpen, setTransactionOpen] = useState(false);
+  const [goal, setGoal] = useState(blankGoal());
+  const [transaction, setTransaction] = useState(blankTransaction());
+  const deposits = data.savingsTransactions
+    .filter((t) => t.type === "Depósito")
+    .reduce((s, t) => s + t.amount, 0);
+  const withdrawals = data.savingsTransactions
+    .filter((t) => t.type === "Retirada")
+    .reduce((s, t) => s + t.amount, 0);
+  const balance = deposits - withdrawals;
+  const target = data.savingsGoals.reduce((s, g) => s + g.target, 0);
+  const progress = Math.min(100, Math.round((balance / target) * 100) || 0);
+  const goalBalances = useMemo(
+    () =>
+      Object.fromEntries(
+        data.savingsGoals.map((g) => [
+          g.id,
+          data.savingsTransactions
+            .filter((t) => t.goalId === g.id)
+            .reduce(
+              (s, t) => s + (t.type === "Depósito" ? t.amount : -t.amount),
+              0,
+            ),
+        ]),
+      ),
+    [data],
+  );
+  const evolution = useMemo(() => {
+    let sum = 0;
+    return [...data.savingsTransactions]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((t) => {
+        sum += t.type === "Depósito" ? t.amount : -t.amount;
+        return { date: shortDate(t.date), saldo: sum };
+      });
+  }, [data.savingsTransactions]);
+  const saveGoal = () => {
+    setData((d) => ({
+      ...d,
+      savingsGoals: d.savingsGoals.some((x) => x.id === goal.id)
+        ? d.savingsGoals.map((x) => (x.id === goal.id ? goal : x))
+        : [...d.savingsGoals, goal],
+    }));
+    setGoalOpen(false);
+    toast.success("Meta salva");
+  };
+  const saveTransaction = () => {
+    if (!transaction.description || transaction.amount <= 0) {
+      toast.error("Informe a descrição e um valor válido");
+      return;
+    }
+    setData((d) => ({
+      ...d,
+      savingsTransactions: d.savingsTransactions.some(
+        (x) => x.id === transaction.id,
+      )
+        ? d.savingsTransactions.map((x) =>
+            x.id === transaction.id ? transaction : x,
+          )
+        : [...d.savingsTransactions, transaction],
+    }));
+    setTransactionOpen(false);
+    toast.success("Movimentação registrada");
+  };
+  return (
+    <>
+      <PageHeader
+        eyebrow="Reserva para os planos"
+        title="Poupança"
+        description="Acompanhem quanto já guardaram, organizem metas e registrem depósitos ou retiradas."
+        action={
+          <div className="flex gap-2">
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                setGoal(blankGoal());
+                setGoalOpen(true);
+              }}
+            >
+              <Target size={17} />
+              Nova meta
+            </button>
+            <AddButton
+              onClick={() => {
+                setTransaction({
+                  ...blankTransaction(),
+                  goalId: data.savingsGoals[0]?.id || "",
+                });
+                setTransactionOpen(true);
+              }}
+            >
+              Movimentação
+            </AddButton>
+          </div>
+        }
+      />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric
+          label="Saldo guardado"
+          value={money(balance)}
+          icon={<PiggyBank size={19} />}
+          detail={`${progress}% da meta total`}
+        />
+        <Metric
+          label="Total depositado"
+          value={money(deposits)}
+          icon={<ArrowDownLeft size={19} />}
+          tone="blue"
+        />
+        <Metric
+          label="Total retirado"
+          value={money(withdrawals)}
+          icon={<ArrowUpRight size={19} />}
+          tone="rose"
+        />
+        <Metric
+          label="Meta total"
+          value={money(target)}
+          icon={<Target size={19} />}
+          detail={`${money(Math.max(0, target - balance))} para chegar lá`}
+          tone="sand"
+        />
+      </div>
+      <div className="my-5">
+        <Tabs
+          items={["Visão geral", "Metas", "Movimentações"]}
+          value={tab}
+          onChange={setTab}
+        />
+      </div>
+      {tab === "Visão geral" && (
+        <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold">Evolução da reserva</p>
+                <p className="text-xs text-slate-500">
+                  Saldo acumulado ao longo do tempo
+                </p>
+              </div>
+              <Wallet className="text-sage-500" size={20} />
+            </div>
+            <div className="mt-4 h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={evolution}>
+                  <defs>
+                    <linearGradient id="save" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="5%"
+                        stopColor="#678b72"
+                        stopOpacity={0.35}
+                      />
+                      <stop offset="95%" stopColor="#678b72" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} />
+                  <YAxis hide />
+                  <Tooltip formatter={(v: number) => money(v)} />
+                  <Area
+                    type="monotone"
+                    dataKey="saldo"
+                    stroke="#678b72"
+                    strokeWidth={3}
+                    fill="url(#save)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="card">
+            <p className="font-semibold">Progresso das metas</p>
+            <div className="mt-5 space-y-5">
+              {data.savingsGoals.map((g) => {
+                const value = goalBalances[g.id] || 0;
+                const pct = Math.min(
+                  100,
+                  Math.round((value / g.target) * 100) || 0,
+                );
+                return (
+                  <div key={g.id}>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold">{g.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {money(value)} de {money(g.target)}
+                        </p>
+                      </div>
+                      <Badge tone={pct >= 100 ? "green" : "yellow"}>
+                        {pct}%
+                      </Badge>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-sage-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+      {tab === "Metas" && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {data.savingsGoals.length ? (
+            data.savingsGoals.map((g) => {
+              const value = goalBalances[g.id] || 0;
+              const pct = Math.min(
+                100,
+                Math.round((value / g.target) * 100) || 0,
+              );
+              return (
+                <div key={g.id} className="card">
+                  <div className="flex items-start justify-between">
+                    <div className="rounded-xl bg-amber-50 p-2.5 text-amber-700">
+                      <Target size={20} />
+                    </div>
+                    <RowActions
+                      onEdit={() => {
+                        setGoal(g);
+                        setGoalOpen(true);
+                      }}
+                      onDelete={() =>
+                        setData((d) => ({
+                          ...d,
+                          savingsGoals: d.savingsGoals.filter(
+                            (x) => x.id !== g.id,
+                          ),
+                        }))
+                      }
+                    />
+                  </div>
+                  <h3 className="mt-5 font-display text-xl font-bold">
+                    {g.name}
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">{g.category}</p>
+                  <p className="mt-5 text-2xl font-bold">{money(value)}</p>
+                  <p className="text-xs text-slate-500">
+                    Meta de {money(g.target)}
+                  </p>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full bg-amber-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <CalendarClock size={14} />
+                      {shortDate(g.deadline)}
+                    </span>
+                    <Badge tone={priorityTone(g.priority)}>{g.priority}</Badge>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="card md:col-span-2">
+              <Empty />
+            </div>
+          )}
+        </div>
+      )}
+      {tab === "Movimentações" && (
+        <div className="table-wrap">
+          {data.savingsTransactions.length ? (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Movimentação</th>
+                  <th>Data</th>
+                  <th>Meta</th>
+                  <th>Responsável</th>
+                  <th>Tipo</th>
+                  <th>Valor</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...data.savingsTransactions]
+                  .sort((a, b) => b.date.localeCompare(a.date))
+                  .map((t) => (
+                    <tr key={t.id}>
+                      <td>
+                        <p className="font-semibold">{t.description}</p>
+                        <p className="text-xs text-slate-400">{t.notes}</p>
+                      </td>
+                      <td>{shortDate(t.date)}</td>
+                      <td>
+                        {data.savingsGoals.find((g) => g.id === t.goalId)
+                          ?.name || "Geral"}
+                      </td>
+                      <td>{t.responsible}</td>
+                      <td>
+                        <Badge tone={t.type === "Depósito" ? "green" : "red"}>
+                          {t.type}
+                        </Badge>
+                      </td>
+                      <td
+                        className={`font-semibold ${t.type === "Depósito" ? "text-emerald-700" : "text-red-600"}`}
+                      >
+                        {t.type === "Depósito" ? "+" : "−"} {money(t.amount)}
+                      </td>
+                      <td>
+                        <RowActions
+                          onEdit={() => {
+                            setTransaction(t);
+                            setTransactionOpen(true);
+                          }}
+                          onDelete={() =>
+                            setData((d) => ({
+                              ...d,
+                              savingsTransactions: d.savingsTransactions.filter(
+                                (x) => x.id !== t.id,
+                              ),
+                            }))
+                          }
+                        />
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          ) : (
+            <Empty />
+          )}
+        </div>
+      )}
+      <Modal
+        open={goalOpen}
+        onClose={() => setGoalOpen(false)}
+        title="Meta de poupança"
+      >
+        <FormGrid>
+          <Field label="Nome da meta">
+            <input
+              className="field"
+              value={goal.name}
+              onChange={(e) => setGoal((x) => ({ ...x, name: e.target.value }))}
+            />
+          </Field>
+          <Field label="Categoria">
+            <input
+              className="field"
+              value={goal.category}
+              onChange={(e) =>
+                setGoal((x) => ({ ...x, category: e.target.value }))
+              }
+            />
+          </Field>
+          <Field label="Valor da meta">
+            <input
+              className="field"
+              type="number"
+              value={goal.target}
+              onChange={(e) =>
+                setGoal((x) => ({ ...x, target: +e.target.value }))
+              }
+            />
+          </Field>
+          <Field label="Prazo">
+            <input
+              className="field"
+              type="date"
+              value={goal.deadline}
+              onChange={(e) =>
+                setGoal((x) => ({ ...x, deadline: e.target.value }))
+              }
+            />
+          </Field>
+          <Field label="Prioridade">
+            <select
+              className="field"
+              value={goal.priority}
+              onChange={(e) =>
+                setGoal((x) => ({
+                  ...x,
+                  priority: e.target.value as SavingsGoal["priority"],
+                }))
+              }
+            >
+              {["Alta", "Média", "Baixa"].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Observações">
+              <textarea
+                className="field"
+                value={goal.notes}
+                onChange={(e) =>
+                  setGoal((x) => ({ ...x, notes: e.target.value }))
+                }
+              />
+            </Field>
+          </div>
+        </FormGrid>
+        <div className="mt-5 flex justify-end">
+          <button className="btn-primary" onClick={saveGoal}>
+            Salvar meta
+          </button>
+        </div>
+      </Modal>
+      <Modal
+        open={transactionOpen}
+        onClose={() => setTransactionOpen(false)}
+        title="Movimentação da poupança"
+      >
+        <FormGrid>
+          <Field label="Descrição">
+            <input
+              className="field"
+              value={transaction.description}
+              onChange={(e) =>
+                setTransaction((x) => ({ ...x, description: e.target.value }))
+              }
+            />
+          </Field>
+          <Field label="Tipo">
+            <select
+              className="field"
+              value={transaction.type}
+              onChange={(e) =>
+                setTransaction((x) => ({
+                  ...x,
+                  type: e.target.value as SavingsTransaction["type"],
+                }))
+              }
+            >
+              <option>Depósito</option>
+              <option>Retirada</option>
+            </select>
+          </Field>
+          <Field label="Valor">
+            <input
+              className="field"
+              type="number"
+              value={transaction.amount}
+              onChange={(e) =>
+                setTransaction((x) => ({ ...x, amount: +e.target.value }))
+              }
+            />
+          </Field>
+          <Field label="Data">
+            <input
+              className="field"
+              type="date"
+              value={transaction.date}
+              onChange={(e) =>
+                setTransaction((x) => ({ ...x, date: e.target.value }))
+              }
+            />
+          </Field>
+          <Field label="Meta">
+            <select
+              className="field"
+              value={transaction.goalId}
+              onChange={(e) =>
+                setTransaction((x) => ({ ...x, goalId: e.target.value }))
+              }
+            >
+              <option value="">Geral</option>
+              {data.savingsGoals.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Responsável">
+            <select
+              className="field"
+              value={transaction.responsible}
+              onChange={(e) =>
+                setTransaction((x) => ({
+                  ...x,
+                  responsible: e.target
+                    .value as SavingsTransaction["responsible"],
+                }))
+              }
+            >
+              {["Rebecca", "Naelly", "As duas"].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Observações">
+              <textarea
+                className="field"
+                value={transaction.notes}
+                onChange={(e) =>
+                  setTransaction((x) => ({ ...x, notes: e.target.value }))
+                }
+              />
+            </Field>
+          </div>
+        </FormGrid>
+        <div className="mt-5 flex justify-end">
+          <button className="btn-primary" onClick={saveTransaction}>
+            Salvar movimentação
+          </button>
+        </div>
+      </Modal>
+    </>
+  );
 }
