@@ -17,6 +17,7 @@ const reserveGoalId=id(); const movingGoalId=id()
 const today=new Date(); const date=(days:number)=>{const d=new Date(today);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
 export const initialData:AppData={
   house:{name:'Casa RN',address:'Pintombeira',city:'Limoeiro do Norte',neighborhood:'Pintombeira',lotSize:'10 x 25 m',builtSize:'—',type:'Casa',seller:'',sellerContact:'',value:280000,downPayment:56000,deliveryDate:date(120),status:'Em análise',notes:'Nosso novo começo. 🏡',joinCode:''},
+  rooms,
   shopping,
   financing:{bank:'Caixa Econômica Federal',type:'SAC',propertyValue:280000,financedValue:224000,downPayment:56000,installmentsCount:360,annualRate:9.8,monthlyRate:0.78,amortizationSystem:'SAC',contractDate:'',firstDueDate:date(12),dueDay:10,firstValue:2410,currentValue:2385,currentBalance:221440,currentNumber:3,status:'Em pagamento',contractUrl:'',notes:'Valores demonstrativos e totalmente editáveis.'},
   installments:[

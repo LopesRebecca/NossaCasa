@@ -17,6 +17,7 @@ function cachedData():AppData{
     return {
       ...initialData,...saved,
       house:{...initialData.house,...saved.house},
+      rooms:saved.rooms||initialData.rooms,
       shopping:(saved.shopping||initialData.shopping).map((i:any)=>({...i,owner:rename(i.owner)})),
       events:(saved.events||initialData.events).map((i:any)=>({...i,owner:rename(i.owner)})),
       savingsTransactions:(saved.savingsTransactions||initialData.savingsTransactions).map((i:any)=>({...i,responsible:rename(i.responsible)})),
