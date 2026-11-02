@@ -41,15 +41,44 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const MAX_FILE_MB = 20;
+
+// Extensão segura para a chave do Storage (sem espaços, acentos ou símbolos).
 const fileExtension = (file: File) => {
-  const name = file.name.trim();
-  const parts = name.split(".");
+  const parts = file.name.trim().split(".");
   if (parts.length < 2) return "";
-  return `.${parts.pop()}`;
+  const ext = (parts.pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10);
+  return ext ? `.${ext}` : "";
+};
+
+const uploadErrorMessage = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const lower = message.toLowerCase();
+  if (lower.includes("bucket not found")) {
+    return `Bucket "${bucket}" não encontrado no Supabase. Crie esse bucket ou ajuste VITE_SUPABASE_DOCUMENTS_BUCKET.`;
+  }
+  if (
+    lower.includes("row-level security") ||
+    lower.includes("unauthorized") ||
+    lower.includes("not authorized")
+  ) {
+    return "O Supabase recusou o envio por permissão do Storage. Rode a migration 202606220006_documents_storage_access.sql no SQL Editor do Supabase.";
+  }
+  if (lower.includes("exceeded") || lower.includes("too large") || lower.includes("payload")) {
+    return `Arquivo grande demais para o Supabase. Use um arquivo de até ${MAX_FILE_MB} MB.`;
+  }
+  if (lower.includes("failed to fetch") || lower.includes("networkerror")) {
+    return "Sem conexão com o Supabase. Verifique a internet e as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.";
+  }
+  return message || "Falha ao enviar o arquivo";
 };
 
 async function uploadDocumentFile(file: File, houseName: string, documentId: string) {
-  if (!supabase) throw new Error("Supabase n\u00e3o configurado");
+  if (!supabase) {
+    throw new Error(
+      "Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env.local.",
+    );
+  }
   const safeHouse = slugify(houseName) || "nossa-casa";
   const path = `houses/${safeHouse}/documents/${documentId}-${Date.now()}${fileExtension(file)}`;
   const { error } = await supabase.storage.from(bucket).upload(path, file, {
@@ -57,14 +86,7 @@ async function uploadDocumentFile(file: File, houseName: string, documentId: str
     cacheControl: "3600",
     contentType: file.type || "application/octet-stream",
   });
-  if (error) {
-    if (error.message.toLowerCase().includes("bucket not found")) {
-      throw new Error(
-        `Bucket "${bucket}" não encontrado no Supabase. Crie esse bucket ou ajuste VITE_SUPABASE_DOCUMENTS_BUCKET.`,
-      );
-    }
-    throw error;
-  }
+  if (error) throw new Error(uploadErrorMessage(error));
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 }
@@ -94,13 +116,17 @@ export function DocumentsPage() {
   };
 
   const save = async () => {
+    if (!item.name.trim()) {
+      toast.error("Informe o nome do documento");
+      return;
+    }
     try {
       setUploading(true);
       let fileUrl = item.file;
       if (selectedFile) {
         fileUrl = await uploadDocumentFile(selectedFile, data.house.name, item.id);
       }
-      const nextItem = { ...item, file: fileUrl };
+      const nextItem = { ...item, name: item.name.trim(), file: fileUrl };
       setData((d) => ({
         ...d,
         documents: d.documents.some((x) => x.id === item.id)
@@ -225,12 +251,13 @@ export function DocumentsPage() {
                         setSelectedFile(null);
                         setOpen(true);
                       }}
-                      onDelete={() =>
+                      onDelete={() => {
+                        if (!window.confirm(`Excluir "${i.name}"?`)) return;
                         setData((d) => ({
                           ...d,
                           documents: d.documents.filter((x) => x.id !== i.id),
-                        }))
-                      }
+                        }));
+                      }}
                     />
                   </td>
                 </tr>
@@ -328,11 +355,20 @@ export function DocumentsPage() {
                 <input
                   className="field"
                   type="file"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const picked = e.target.files?.[0] || null;
+                    if (picked && picked.size > MAX_FILE_MB * 1024 * 1024) {
+                      toast.error(`Arquivo acima de ${MAX_FILE_MB} MB. Escolha um menor.`);
+                      e.target.value = "";
+                      setSelectedFile(null);
+                      return;
+                    }
+                    setSelectedFile(picked);
+                  }}
                 />
                 <p className="text-xs text-slate-500">
-                  Envie PDF, imagem ou outro arquivo. O upload será salvo no
-                  Supabase Storage.
+                  Envie PDF, imagem ou outro arquivo de até {MAX_FILE_MB} MB. O
+                  upload será salvo no Supabase Storage.
                 </p>
                 {(selectedFile || item.file) && (
                   <div className="rounded-2xl border border-dashed border-sage-200 bg-sage-50 px-4 py-3 text-sm text-slate-600">
@@ -342,9 +378,18 @@ export function DocumentsPage() {
                         Novo arquivo selecionado: {selectedFile.name}
                       </span>
                     ) : (
-                      <span className="flex items-center gap-2">
-                        <Upload size={16} className="text-sage-600" />
-                        Arquivo atual: {fileNameFromUrl(item.file)}
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2">
+                          <Upload size={16} className="text-sage-600" />
+                          Arquivo atual: {fileNameFromUrl(item.file)}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-red-600 hover:underline"
+                          onClick={() => setItem((x) => ({ ...x, file: "" }))}
+                        >
+                          Remover
+                        </button>
                       </span>
                     )}
                   </div>
